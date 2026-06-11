@@ -7,6 +7,7 @@ const productrouter = require("./routes/Productroutes");
 const Bagroutes = require("./routes/Bagroutes");
 const Wishlistroutes = require("./routes/Wishlistroutes");
 const OrderRoutes = require("./routes/OrderRoutes");
+const recentlyViewedRouter = require('./routes/recentlyViewed');
 const cors = require('cors');
 dotenv.config();
 const app = express();
@@ -24,6 +25,7 @@ app.use("/product", productrouter);
 app.use("/bag", Bagroutes);
 app.use("/wishlist", Wishlistroutes);
 app.use("/Order", OrderRoutes);
+app.use("/recently-viewed", recentlyViewedRouter);
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
