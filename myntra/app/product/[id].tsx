@@ -15,6 +15,7 @@ import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { addRecentlyViewed } from "@/utils/recentlyViewed";
 import axios from "axios";
+import { API_BASE_URL } from "@/constants/Api";
 
 // Mock product data - in a real app, this would come from an API
 // const products = {
@@ -78,111 +79,111 @@ import axios from "axios";
 //       "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=500&auto=format&fit=crop",
 //     ],
 //   },
-// };
-
-export default function ProductDetails() {
-  const { id } = useLocalSearchParams();
-  const router = useRouter();
-  const { width } = useWindowDimensions();
-  const [selectedSize, setSelectedSize] = useState("");
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const autoScrollTimer = useRef<NodeJS.Timeout>();
-  const { user } = useAuth();
-  const [product, setproduct] = useState<any>(null);
-  const [iswishlist, setiswishlist] = useState(false);
-  useEffect(() => {
-    // Simulate loading time
-
-    const fetchproduct = async () => {
-      try {
-        setIsLoading(true);
-        const product = await axios.get(
-          `http://localhost:5000/product/${id}`
-        );
-        setproduct(product.data);
-        if (product.data) {
-          addRecentlyViewed(product.data, user?._id);
-        }
-      } catch (error) {
-        console.log(error);
-        setIsLoading(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchproduct();
-  }, []);
-
-  useEffect(() => {
-    // Start auto-scroll
-    startAutoScroll();
-
-    return () => {
-      if (autoScrollTimer.current) {
-        clearInterval(autoScrollTimer.current);
-      }
-    };
-  }, []);
-
-  const startAutoScroll = () => {
-    autoScrollTimer.current = setInterval(() => {
-      if (product && scrollViewRef.current) {
-        const nextIndex = (currentImageIndex + 1) % product.images.length;
-        scrollViewRef.current.scrollTo({
-          x: nextIndex * width,
-          animated: true,
-        });
-        setCurrentImageIndex(nextIndex);
-      }
-    }, 3000);
-  };
-
-  if (!product) {
-    return (
-      <View style={styles.container}>
-        <Text>Product not found</Text>
-      </View>
-    );
-  }
-  const handleAddwishlist = async () => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    try {
-      await axios.post(`http://localhost:5000/wishlist`, {
-        userId: user._id,
-        productId: id,
-      });
-      setiswishlist(true);
-      router.push("/wishlist");
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  const handleAddToBag = async () => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    if (!selectedSize) {
-      // In a real app, show a proper error message
-      alert("Please select a size");
-      return;
-    }
-    try {
-      setLoading(true);
-      await axios.post(`http://localhost:5000/bag`, {
-        userId: user._id,
-        productId: id,
-        size: selectedSize,
-        quantity: 1,
-      });
+//   // };
+//   
+//   export default function ProductDetails() {
+//     const { id } = useLocalSearchParams();
+//     const router = useRouter();
+//     const { width } = useWindowDimensions();
+//     const [selectedSize, setSelectedSize] = useState("");
+//     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+//     const [isLoading, setIsLoading] = useState(true);
+//     const [loading, setLoading] = useState(false);
+//     const scrollViewRef = useRef<ScrollView>(null);
+//     const autoScrollTimer = useRef<NodeJS.Timeout>();
+//     const { user } = useAuth();
+//     const [product, setproduct] = useState<any>(null);
+//     const [iswishlist, setiswishlist] = useState(false);
+//     useEffect(() => {
+//       // Simulate loading time
+//   
+//       const fetchproduct = async () => {
+//         try {
+//           setIsLoading(true);
+//           const product = await axios.get(
+//             `${API_BASE_URL}/product/${id}`
+//           );
+//           setproduct(product.data);
+//           if (product.data) {
+//             addRecentlyViewed(product.data, user?._id);
+//           }
+//         } catch (error) {
+//           console.log(error);
+//           setIsLoading(false);
+//         } finally {
+//           setIsLoading(false);
+//         }
+//       };
+//       fetchproduct();
+//     }, []);
+//   
+//     useEffect(() => {
+//       // Start auto-scroll
+//       startAutoScroll();
+//   
+//       return () => {
+//         if (autoScrollTimer.current) {
+//           clearInterval(autoScrollTimer.current);
+//         }
+//       };
+//     }, []);
+//   
+//     const startAutoScroll = () => {
+//       autoScrollTimer.current = setInterval(() => {
+//         if (product && scrollViewRef.current) {
+//           const nextIndex = (currentImageIndex + 1) % product.images.length;
+//           scrollViewRef.current.scrollTo({
+//             x: nextIndex * width,
+//             animated: true,
+//           });
+//           setCurrentImageIndex(nextIndex);
+//         }
+//       }, 3000);
+//     };
+//   
+//     if (!product) {
+//       return (
+//         <View style={styles.container}>
+//           <Text>Product not found</Text>
+//         </View>
+//       );
+//     }
+//     const handleAddwishlist = async () => {
+//       if (!user) {
+//         router.push("/login");
+//         return;
+//       }
+//   
+//       try {
+//         await axios.post(`${API_BASE_URL}/wishlist`, {
+//           userId: user._id,
+//           productId: id,
+//         });
+//         setiswishlist(true);
+//         router.push("/wishlist");
+//       } catch (error) {
+//         console.log(error);
+//       }
+//     };
+//     const handleAddToBag = async () => {
+//       if (!user) {
+//         router.push("/login");
+//         return;
+//       }
+//   
+//       if (!selectedSize) {
+//         // In a real app, show a proper error message
+//         alert("Please select a size");
+//         return;
+//       }
+//       try {
+//         setLoading(true);
+//         await axios.post(`${API_BASE_URL}/bag`, {
+//           userId: user._id,
+//           productId: id,
+//           size: selectedSize,
+//           quantity: 1,
+//         });
       router.push("/bag");
     } catch (error) {
       console.log(error);

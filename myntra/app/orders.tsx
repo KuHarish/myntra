@@ -21,6 +21,7 @@ import {
 import React from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
+import { API_BASE_URL } from "@/constants/Api";
 
 const orders = [
   {
@@ -143,7 +144,7 @@ export default function Orders() {
         try {
           setIsLoading(true);
           const product = await axios.get(
-            `http://localhost:5000/order/user/${user._id}`
+            `${API_BASE_URL}/order/user/${user._id}`
           );
           setorder(product.data);
         } catch (error) {

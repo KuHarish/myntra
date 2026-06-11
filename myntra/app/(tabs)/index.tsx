@@ -16,6 +16,7 @@ import axios from "axios";
 import { useTheme } from "@/src/theme";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
+import { API_BASE_URL } from "@/constants/Api";
 import { useFocusEffect } from "@react-navigation/native";
 
 const deals = [
@@ -58,7 +59,7 @@ export default function Home() {
     }
     try {
       const res = await axios.get(
-        `http://localhost:5000/notifications/${user._id}`
+        `${API_BASE_URL}/notifications/${user._id}`
       );
       const unread = res.data.filter((n: any) => !n.isRead).length;
       setUnreadCount(unread);
@@ -78,8 +79,8 @@ export default function Home() {
     const fetchproduct = async () => {
       try {
         setIsLoading(true);
-        const cat = await axios.get("http://localhost:5000/category");
-        const product = await axios.get("http://localhost:5000/product");
+        const cat = await axios.get(`${API_BASE_URL}/category`);
+        const product = await axios.get(`${API_BASE_URL}/product`);
         setcategories(cat.data);
         setproduct(product.data);
       } catch (error) {

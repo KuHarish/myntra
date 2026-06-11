@@ -4,6 +4,8 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import axios from 'axios';
 
+import { API_BASE_URL } from '../constants/Api';
+
 // Configure default notification handler for foreground notifications
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -59,7 +61,7 @@ export async function registerForPushNotificationsAsync(userId: string) {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
     // Register token with Express backend
-    await axios.post('http://localhost:5000/notifications/register', {
+    await axios.post(`${API_BASE_URL}/notifications/register`, {
       userId,
       token,
       platform: Platform.OS,
@@ -78,7 +80,7 @@ export async function registerForPushNotificationsAsync(userId: string) {
  */
 export async function unregisterPushNotificationsAsync(userId: string, token: string) {
   try {
-    await axios.post('http://localhost:5000/notifications/remove', {
+    await axios.post(`${API_BASE_URL}/notifications/remove`, {
       userId,
       token,
     });

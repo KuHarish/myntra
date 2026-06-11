@@ -13,8 +13,10 @@ export interface ViewedProduct {
   rating?: number;  // Display rating
 }
 
+import { API_BASE_URL } from "../constants/Api";
+
 const STORAGE_KEY = "recently_viewed_products";
-const API_BASE = "http://localhost:5000/recently-viewed"; // matches backend route
+const API_BASE = `${API_BASE_URL}/recently-viewed`; // matches backend route
 const MAX_ITEMS = 10;
 
 /**

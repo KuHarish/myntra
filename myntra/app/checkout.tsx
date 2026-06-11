@@ -3,6 +3,7 @@ import axios from "axios";
 import { useRouter } from "expo-router";
 import { CreditCard, MapPin, Truck } from "lucide-react-native";
 import React from "react";
+import { API_BASE_URL } from "@/constants/Api";
 import { useState } from "react";
 import {
   View,
@@ -23,7 +24,7 @@ export default function Checkout() {
       return;
     }
     try {
-      await axios.post(`http://localhost:5000/order/create/${user._id}`, {
+       await axios.post(`${API_BASE_URL}/order/create/${user._id}`, {
         shippingAddress: "123 Main Street, Apt 4B, New York, NY, 10001",
         paymentMethod: "Card",
       });

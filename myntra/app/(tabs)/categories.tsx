@@ -15,6 +15,7 @@ import axios from "axios";
 import { useTheme } from "@/src/theme";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
+import { API_BASE_URL } from "@/constants/Api";
 
 export default function TabTwoScreen() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function TabTwoScreen() {
     const fetchproduct = async () => {
       try {
         setIsLoading(true);
-        const cat = await axios.get("http://localhost:5000/category");
+        const cat = await axios.get(`${API_BASE_URL}/category`);
         setcategories(cat.data);
       } catch (error) {
         console.log(error);

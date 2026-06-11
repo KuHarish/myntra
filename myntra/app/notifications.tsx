@@ -23,6 +23,7 @@ import {
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/src/theme";
+import { API_BASE_URL } from "@/constants/Api";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 
@@ -96,7 +97,7 @@ export default function Notifications() {
     if (!user) return;
     try {
       const res = await axios.get(
-        `http://localhost:5000/notifications/${user._id}`
+        `${API_BASE_URL}/notifications/${user._id}`
       );
       setNotifications(res.data);
     } catch (error) {
@@ -118,7 +119,7 @@ export default function Notifications() {
 
   const markAsRead = async (id: string) => {
     try {
-      await axios.put(`http://localhost:5000/notifications/${id}/read`);
+      await axios.put(`${API_BASE_URL}/notifications/${id}/read`);
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
@@ -134,7 +135,7 @@ export default function Notifications() {
         .map((n) => n._id);
       await Promise.all(
         unreadIds.map((id) =>
-          axios.put(`http://localhost:5000/notifications/${id}/read`)
+          axios.put(`${API_BASE_URL}/notifications/${id}/read`)
         )
       );
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
