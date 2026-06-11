@@ -78,11 +78,3 @@ export function usePushNotifications() {
   };
 }
 export default usePushNotifications;
-
-
-  return {
-    expoPushToken,
-    notification,
-  };
-}
-export default usePushNotifications;
