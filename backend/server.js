@@ -19,6 +19,10 @@ app.use(cors({
   origin: '*', 
   credentials: true, 
 }));
+app.use((req, res, next) => {
+  console.log(`[API] ${req.method} ${req.url} - Body:`, req.body);
+  next();
+});
 app.get("/", (req, res) => {
   res.send("✅ Myntra backend in working");
 });
