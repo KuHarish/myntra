@@ -9,6 +9,7 @@ const Wishlistroutes = require("./routes/Wishlistroutes");
 const OrderRoutes = require("./routes/OrderRoutes");
 const recentlyViewedRouter = require('./routes/recentlyViewed');
 const notificationRouter = require('./routes/notifications');
+const transactionRouter = require("./routes/TransactionRoutes");
 const { startWorker } = require("./services/notificationQueue");
 const cors = require('cors');
 dotenv.config();
@@ -25,10 +26,13 @@ app.use("/user", userrouter);
 app.use("/category", categoryrouter);
 app.use("/product", productrouter);
 app.use("/bag", Bagroutes);
+app.use("/cart", require("./routes/CartRoutes"));
 app.use("/wishlist", Wishlistroutes);
 app.use("/Order", OrderRoutes);
 app.use("/recently-viewed", recentlyViewedRouter);
 app.use("/notifications", notificationRouter);
+app.use("/transactions", transactionRouter);
+
 
 mongoose
   .connect(process.env.MONGO_URI, { family: 4 })

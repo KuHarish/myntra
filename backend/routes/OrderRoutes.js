@@ -3,6 +3,8 @@ const Bag = require("../models/Bag");
 const Order = require("../models/Order");
 const router = express.Router();
 const mongoose = require("mongoose");
+const Transaction = require("../models/Transaction");
+const auditService = require("../services/auditService");
 const { emitOrderCreated, emitPaymentConfirmed, emitOrderShipped } = require("../services/notificationEvents");
 
 function genrateRandomTracking() {
@@ -42,23 +44,60 @@ function genrateRandomTracking() {
     ],
   };
 }
+const Cart = require("../models/Cart");
+const CartItem = require("../models/CartItem");
+const Product = require("../models/Product");
+
 router.post("/create/:userId", async (req, res) => {
+  const userid = req.params.userId;
+  const session = await mongoose.startSession();
+  
   try {
-    const userid = req.params.userId;
-    const bag = await Bag.find({ userId: userid }).populate("productId");
-    if (bag.length === 0) {
-      return res.status(400).json({ message: "No item in the bag" });
+    session.startTransaction();
+
+    // 1. Fetch Cart
+    const cart = await Cart.findOne({ userId: userid }).session(session);
+    if (!cart) {
+      return res.status(400).json({ message: "No active cart found for this user." });
     }
-    const orderitem = bag.map((item) => ({
-      productId: item.productId._id,
-      size: item.size,
-      price: item.productId.price,
-      quantity: item.quantity,
-    }));
-    const total = orderitem.reduce(
-      (sum, item) => sum + item.price + item.quantity,
-      0
-    );
+
+    // 2. Fetch CartItems
+    const items = await CartItem.find({ cartId: cart._id }).session(session);
+    if (items.length === 0) {
+      return res.status(400).json({ message: "No items in the active cart." });
+    }
+
+    const orderitem = [];
+    let total = 0;
+
+    // 3. Validate and Deduct Stock Inside Transaction
+    for (const item of items) {
+      const product = await Product.findById(item.productId).session(session);
+      if (!product || product.isDiscontinued) {
+        throw new Error(`Product discontinued: ${item.productNameAtAdded}`);
+      }
+      if (product.price !== item.priceAtAdded) {
+        throw new Error(`Price changed for ${item.productNameAtAdded}. Current: ₹${product.price}, Cart: ₹${item.priceAtAdded}`);
+      }
+      if (item.quantity > product.stock) {
+        throw new Error(`Insufficient stock for ${item.productNameAtAdded}. Stock: ${product.stock}, Cart: ${item.quantity}`);
+      }
+
+      // Deduct stock
+      product.stock -= item.quantity;
+      await product.save({ session });
+
+      orderitem.push({
+        productId: item.productId,
+        size: item.size,
+        price: product.price,
+        quantity: item.quantity,
+      });
+
+      // Correct arithmetic total: price * quantity
+      total += product.price * item.quantity;
+    }
+
     const tracking = genrateRandomTracking();
     const newOrder = new Order({
       userId: userid,
@@ -66,26 +105,163 @@ router.post("/create/:userId", async (req, res) => {
       status: "Processing",
       item: orderitem,
       total: total,
-      shippingAddress: req.body.shippingAddress,
-      paymentMethod:req.body.paymentMethod,
+      shippingAddress: req.body.shippingAddress || "123 Main Street, Apt 4B, New York, NY, 10001",
+      paymentMethod: req.body.paymentMethod || "Card",
       tracking: tracking,
     });
-    await newOrder.save();
-    await Bag.deleteMany({ userId: userid });
+    await newOrder.save({ session });
+
+    // Clear active cart items
+    await CartItem.deleteMany({ cartId: cart._id }, { session });
+
+    // Create Transaction Record
+    const method = req.body.paymentMethod || "Card";
+    let status = "Paid";
+    let responseCode = "SUCCESS";
+    if (method === "COD") {
+      status = "Created";
+      responseCode = "PENDING";
+    }
+
+    const gateway = method === "Card" ? "Stripe" : (method === "Google Pay" || method === "UPI" ? "Razorpay" : "None");
+    const gatewayTransactionId = gateway !== "None" ? `pay_${Math.random().toString(36).substring(2, 12)}` : null;
+
+    const newTxn = new Transaction({
+      userId: userid,
+      transactionId: `TXN-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      invoiceId: `INV-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}-${newOrder._id.toString().substring(18)}`,
+      amount: total,
+      currency: "INR",
+      gateway,
+      gatewayTransactionId,
+      gatewayResponseCode: responseCode,
+      paymentMethod: method,
+      status: status,
+      dateTime: new Date(),
+      metadata: { orderId: newOrder._id }
+    });
+    await newTxn.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Log audit log (non-blocking)
+    await auditService.logEvent(newTxn._id, status, `User: ${userid}`, { action: "order_checkout", orderId: newOrder._id });
 
     // Emit notification events
     emitOrderCreated(userid, newOrder._id, total);
-    emitPaymentConfirmed(userid, total, req.body.paymentMethod || "Card");
+    emitPaymentConfirmed(userid, total, method);
 
-    // If tracking status is "Shipped", emit shipped event too
     if (tracking.status === "Shipped" || tracking.status === "In Transit") {
       emitOrderShipped(userid, newOrder._id, tracking.number);
     }
 
     res.status(200).json({ message: "Order placed successfully" });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Something went wrong" });
+    await session.abortTransaction();
+    session.endSession();
+
+    // Fallback for local mongo instance (no replica set transaction support)
+    if (error.message.includes("replica set") || error.message.includes("Transaction")) {
+      try {
+        const cart = await Cart.findOne({ userId: userid });
+        if (!cart) return res.status(400).json({ message: "No active cart found for this user." });
+
+        const items = await CartItem.find({ cartId: cart._id });
+        if (items.length === 0) return res.status(400).json({ message: "No items in the active cart." });
+
+        const orderitem = [];
+        let total = 0;
+
+        // Step 1: Pre-validate all items to prevent half-updates
+        for (const item of items) {
+          const product = await Product.findById(item.productId);
+          if (!product || product.isDiscontinued) {
+            return res.status(409).json({ message: `Product is discontinued: ${item.productNameAtAdded}`, code: "DISCONTINUED" });
+          }
+          if (product.price !== item.priceAtAdded) {
+            return res.status(409).json({ message: `Price changed for ${item.productNameAtAdded}. Current: ₹${product.price}, Cart: ₹${item.priceAtAdded}`, code: "PRICE_CHANGED" });
+          }
+          if (item.quantity > product.stock) {
+            return res.status(409).json({ message: `Insufficient stock for ${item.productNameAtAdded}. Stock: ${product.stock}, Cart: ${item.quantity}`, code: "OUT_OF_STOCK" });
+          }
+        }
+
+        // Step 2: Deduct stock and populate order item list
+        for (const item of items) {
+          const product = await Product.findById(item.productId);
+          product.stock -= item.quantity;
+          await product.save();
+
+          orderitem.push({
+            productId: item.productId,
+            size: item.size,
+            price: product.price,
+            quantity: item.quantity,
+          });
+          total += product.price * item.quantity;
+        }
+
+        const tracking = genrateRandomTracking();
+        const newOrder = new Order({
+          userId: userid,
+          date: new Date().toISOString(),
+          status: "Processing",
+          item: orderitem,
+          total: total,
+          shippingAddress: req.body.shippingAddress || "123 Main Street, Apt 4B, New York, NY, 10001",
+          paymentMethod: req.body.paymentMethod || "Card",
+          tracking: tracking,
+        });
+        await newOrder.save();
+
+        // Clear active cart
+        await CartItem.deleteMany({ cartId: cart._id });
+
+        // Create transaction
+        const method = req.body.paymentMethod || "Card";
+        let status = "Paid";
+        let responseCode = "SUCCESS";
+        if (method === "COD") {
+          status = "Created";
+          responseCode = "PENDING";
+        }
+        const gateway = method === "Card" ? "Stripe" : (method === "Google Pay" || method === "UPI" ? "Razorpay" : "None");
+        const gatewayTransactionId = gateway !== "None" ? `pay_${Math.random().toString(36).substring(2, 12)}` : null;
+
+        const newTxn = new Transaction({
+          userId: userid,
+          transactionId: `TXN-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+          invoiceId: `INV-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}-${newOrder._id.toString().substring(18)}`,
+          amount: total,
+          currency: "INR",
+          gateway,
+          gatewayTransactionId,
+          gatewayResponseCode: responseCode,
+          paymentMethod: method,
+          status: status,
+          dateTime: new Date(),
+          metadata: { orderId: newOrder._id }
+        });
+        await newTxn.save();
+
+        await auditService.logEvent(newTxn._id, status, `User: ${userid}`, { action: "order_checkout", orderId: newOrder._id });
+        emitOrderCreated(userid, newOrder._id, total);
+        emitPaymentConfirmed(userid, total, method);
+
+        if (tracking.status === "Shipped" || tracking.status === "In Transit") {
+          emitOrderShipped(userid, newOrder._id, tracking.number);
+        }
+
+        return res.status(200).json({ message: "Order placed successfully" });
+      } catch (fallbackErr) {
+        console.error("Fallback checkout execution failed:", fallbackErr);
+        return res.status(500).json({ message: fallbackErr.message || "Checkout failed" });
+      }
+    }
+
+    console.error("Hardened checkout failed:", error);
+    res.status(409).json({ message: error.message });
   }
 });
 router.get("/user/:userid", async (req, res) => {
