@@ -9,7 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Search, X, SlidersHorizontal } from "lucide-react-native";
 import axios from "axios";
 import { useTheme } from "@/src/theme";
@@ -19,9 +19,11 @@ import { API_BASE_URL } from "@/constants/Api";
 import { useResponsive } from "@/src/hooks/useResponsive";
 import ResponsiveContainer from "@/src/components/responsive/ResponsiveContainer";
 import ResponsiveGrid from "@/src/components/responsive/ResponsiveGrid";
+import { resolveImageUri } from "@/utils/image";
 
 export default function TabTwoScreen() {
   const router = useRouter();
+  const { categoryId } = useLocalSearchParams<{ categoryId?: string }>();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
@@ -30,6 +32,16 @@ export default function TabTwoScreen() {
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const { theme } = useTheme();
   const { scaleFont, spacing } = useResponsive();
+
+  // Handle selected category from Home screen parameters
+  useEffect(() => {
+    console.log("[Categories Screen] Received categoryId parameter:", categoryId);
+    if (categoryId) {
+      setSelectedCategory(categoryId);
+      setSelectedSubcategory(null);
+      setSearchQuery("");
+    }
+  }, [categoryId]);
 
   /* ─── Fetch categories + ALL products on mount ─── */
   useEffect(() => {
@@ -89,25 +101,106 @@ export default function TabTwoScreen() {
     [categories, selectedCategory]
   );
 
-  /**
-   * Products that belong to the selected category.
-   * Uses the Product.categories[] array (ObjectId refs) — the correct field
-   * added with the recommendation engine.  Falls back to the old productId[]
-   * field on the category doc so existing data also works.
-   */
+  // Diagnostic and filtering hook
   const categoryProducts = useMemo(() => {
-    if (!selectedCategoryData) return [];
+    if (!selectedCategoryData) {
+      console.log("[Categories Screen] No category selected.");
+      return [];
+    }
 
-    // Primary: filter allProducts whose categories array includes this category id
-    const byCategories = allProducts.filter((p: any) =>
-      Array.isArray(p.categories) && p.categories.includes(selectedCategoryData._id)
-    );
+    const selId = selectedCategoryData._id;
+    const selName = selectedCategoryData.name;
 
-    if (byCategories.length > 0) return byCategories;
+    console.log(`[Categories Screen] Filtering products for Category: ${selName} (${selId})`);
+    console.log(`[Categories Screen] Total products fetched from API: ${allProducts.length}`);
 
-    // Fallback: use legacy productId[] on the category document
-    return selectedCategoryData.productId || [];
-  }, [allProducts, selectedCategoryData]);
+    // Robust matching logic matching categories array, categoryId, and category name
+    let matched = allProducts.filter((p: any) => {
+      // 1. Match by categories array (ObjectId refs as strings or objects)
+      const hasInCategories = Array.isArray(p.categories) && p.categories.some((cat: any) => {
+        if (!cat) return false;
+        const catStr = typeof cat === "object" ? (cat._id || cat).toString() : cat.toString();
+        return catStr === selId.toString();
+      });
+
+      // 2. Match by categoryId field
+      const hasCategoryId = p.categoryId && p.categoryId.toString() === selId.toString();
+
+      // 3. Match by category name field
+      const hasCategoryName = p.category && p.category.toString().toLowerCase() === selName.toLowerCase();
+
+      return hasInCategories || hasCategoryId || hasCategoryName;
+    });
+
+    console.log(`[Categories Screen] Category match count (pre-subcategory filter): ${matched.length}`);
+
+    // Fallback to legacy category.productId if matched count is 0
+    if (matched.length === 0) {
+      console.log(`[Categories Screen] Warnings/Diagnostics: No products matched by categories fields.`);
+      const legacyProducts = selectedCategoryData.productId || [];
+      if (legacyProducts.length > 0) {
+        console.log(`[Categories Screen] Falling back to legacy category.productId array: found ${legacyProducts.length} items`);
+        matched = legacyProducts.map((p: any) => {
+          if (typeof p === "object" && p !== null) return p;
+          return allProducts.find((ap: any) => ap._id === p.toString());
+        }).filter(Boolean);
+      }
+    }
+
+    // Diagnostics if still 0
+    if (matched.length === 0 && allProducts.length > 0) {
+      console.warn("[Categories Screen] DIAGNOSTICS: Filtered products is 0 for category:", selName);
+      console.log("[Categories Screen] Sample Product categories from first item in pool:", 
+        allProducts[0] ? JSON.stringify(allProducts[0].categories) : "No products available"
+      );
+      console.log("[Categories Screen] Selected Category ID:", selId, "Type:", typeof selId);
+      console.log("[Categories Screen] Checking for string vs ObjectId mismatch...");
+    }
+
+    // Apply subcategory filter if selected
+    if (selectedSubcategory) {
+      const sub = selectedSubcategory.toLowerCase();
+      console.log(`[Categories Screen] Filtering by subcategory: "${selectedSubcategory}"`);
+      const prevCount = matched.length;
+      
+      matched = matched.filter((p: any) => {
+        const name = (p.name || "").toLowerCase();
+        const desc = (p.description || "").toLowerCase();
+        
+        if (sub === "activewear" || sub === "sports shoes" || sub === "running") {
+          return name.includes("active") || name.includes("train") || name.includes("run") || name.includes("sport") || name.includes("dri-fit") || name.includes("yoga") || name.includes("legging") ||
+                 desc.includes("active") || desc.includes("train") || desc.includes("run") || desc.includes("sport") || desc.includes("dri-fit") || desc.includes("yoga") || desc.includes("legging");
+        }
+        if (sub === "t-shirts" || sub === "t-shirt") {
+          return name.includes("t-shirt") || name.includes("tee") || desc.includes("t-shirt") || desc.includes("tee");
+        }
+        if (sub === "shirts" || sub === "shirt") {
+          return (name.includes("shirt") && !name.includes("t-shirt")) || 
+                 (desc.includes("shirt") && !desc.includes("t-shirt"));
+        }
+        if (sub === "jeans") {
+          return name.includes("jeans") || name.includes("denim") || desc.includes("jeans") || desc.includes("denim");
+        }
+        if (sub === "trousers" || sub === "pants") {
+          return name.includes("trouser") || name.includes("pant") || name.includes("chino") ||
+                 desc.includes("trouser") || desc.includes("pant") || desc.includes("chino");
+        }
+        if (sub === "suits" || sub === "blazers") {
+          return name.includes("suit") || name.includes("blazer") || desc.includes("suit") || desc.includes("blazer");
+        }
+        if (sub === "kurtas" || sub === "kurta") {
+          return name.includes("kurta") || name.includes("anarkali") || desc.includes("kurta") || desc.includes("anarkali");
+        }
+
+        const singular = sub.endsWith("s") ? sub.slice(0, -1) : sub;
+        return name.includes(sub) || desc.includes(sub) || name.includes(singular) || desc.includes(singular);
+      });
+      console.log(`[Categories Screen] Subcategory matched items count: ${matched.length} (out of ${prevCount})`);
+    }
+
+    console.log(`[Categories Screen] Final filtered product count: ${matched.length}`);
+    return matched;
+  }, [allProducts, selectedCategoryData, selectedSubcategory]);
 
   // Search across products when user types in search bar
   const searchResults = useMemo(() => {
@@ -140,8 +233,7 @@ export default function TabTwoScreen() {
     >
       <Image
         source={{
-          uri: product.images?.[0] ||
-            "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&auto=format&fit=crop",
+          uri: resolveImageUri(product.images?.[0]),
         }}
         style={styles.productImage}
         resizeMode="cover"
@@ -259,7 +351,7 @@ export default function TabTwoScreen() {
                       ).length} items
                     </Text>
                   </View>
-                  <ThemedView style={styles.categoryInfo} colorType="card">
+                  <ThemedView style={styles.categoryInfo} colorType="card" pointerEvents="box-none">
                     <ThemedText type="subtitle" style={[styles.categoryName, { fontSize: scaleFont(17) }]}>
                       {category.name}
                     </ThemedText>

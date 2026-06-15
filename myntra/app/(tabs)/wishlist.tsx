@@ -15,6 +15,7 @@ import { useTheme } from "@/src/theme";
 import { API_BASE_URL } from "@/constants/Api";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
+import { resolveImageUri } from "@/utils/image";
 
 export default function Wishlist() {
   const router = useRouter();
@@ -90,26 +91,35 @@ export default function Wishlist() {
       </ThemedView>
 
       <ScrollView style={styles.content}>
-        {wishlist?.map((item: any) => (
-          <ThemedView
-            key={item._id}
-            style={[styles.wishlistItem, { backgroundColor: theme.colors.card, shadowColor: theme.colors.text }]}
-            colorType="card"
-          >
-            <Image source={{ uri: item.productId.images[0] }} style={styles.itemImage} />
-            <ThemedView style={styles.itemInfo} colorType="card">
-              <ThemedText type="default" colorType="textMuted" style={styles.brandName}>{item.productId.brand}</ThemedText>
-              <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.itemName}>{item.productId.name}</ThemedText>
-              <View style={styles.priceContainer}>
-                <ThemedText type="defaultSemiBold" style={styles.price}>{item.productId.price}</ThemedText>
-                <ThemedText type="defaultSemiBold" style={{ color: theme.colors.primary }}>{item.productId.discount}</ThemedText>
-              </View>
+        {wishlist?.map((item: any) => {
+          if (!item.productId || typeof item.productId !== "object") return null;
+          return (
+            <ThemedView
+              key={item._id}
+              style={[styles.wishlistItem, { backgroundColor: theme.colors.card, shadowColor: theme.colors.text }]}
+              colorType="card"
+            >
+              <Image
+                source={{
+                  uri: item.productId.images?.[0] ||
+                    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&auto=format&fit=crop"
+                }}
+                style={styles.itemImage}
+              />
+              <ThemedView style={styles.itemInfo} colorType="card">
+                <ThemedText type="default" colorType="textMuted" style={styles.brandName}>{item.productId.brand}</ThemedText>
+                <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.itemName}>{item.productId.name}</ThemedText>
+                <View style={styles.priceContainer}>
+                  <ThemedText type="defaultSemiBold" style={styles.price}>{item.productId.price}</ThemedText>
+                  <ThemedText type="defaultSemiBold" style={{ color: theme.colors.primary }}>{item.productId.discount}</ThemedText>
+                </View>
+              </ThemedView>
+              <TouchableOpacity style={styles.removeButton} onPress={() => handledelete(item._id)}>
+                <Trash2 size={22} color={theme.colors.primary} />
+              </TouchableOpacity>
             </ThemedView>
-            <TouchableOpacity style={styles.removeButton} onPress={() => handledelete(item._id)}>
-              <Trash2 size={22} color={theme.colors.primary} />
-            </TouchableOpacity>
-          </ThemedView>
-        ))}
+          );
+        })}
       </ScrollView>
     </ThemedView>
   );

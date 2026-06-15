@@ -14,122 +14,14 @@ import {
   ChevronRight,
   MapPin,
   Truck,
-  Clock,
-  Calendar,
   CreditCard,
 } from "lucide-react-native";
 import React from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { API_BASE_URL } from "@/constants/Api";
+import { resolveImageUri } from "@/utils/image";
 
-const orders = [
-  {
-    id: "ORD123456",
-    date: "15 Mar 2024",
-    status: "Delivered",
-    items: [
-      {
-        id: 1,
-        name: "White Cotton T-Shirt",
-        brand: "H&M",
-        size: "L",
-        price: 799,
-        image:
-          "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&auto=format&fit=crop",
-      },
-      {
-        id: 2,
-        name: "Blue Denim Jacket",
-        brand: "Levis",
-        size: "M",
-        price: 2999,
-        image:
-          "https://images.unsplash.com/photo-1523205771623-e0faa4d2813d?w=500&auto=format&fit=crop",
-      },
-    ],
-    total: 4087,
-    shippingAddress: "123 Main Street, Apt 4B, New York, NY 10001",
-    paymentMethod: "Credit Card ending in 4242",
-    tracking: {
-      number: "TRK789012345",
-      carrier: "FedEx",
-      estimatedDelivery: "15 Mar 2024",
-      currentLocation: "New York City Hub",
-      status: "Delivered",
-      timeline: [
-        {
-          status: "Delivered",
-          location: "New York, NY",
-          timestamp: "15 Mar 2024, 14:30",
-        },
-        {
-          status: "Out for Delivery",
-          location: "New York City Hub",
-          timestamp: "15 Mar 2024, 09:15",
-        },
-        {
-          status: "Arrived at Delivery Facility",
-          location: "New York Distribution Center",
-          timestamp: "14 Mar 2024, 23:45",
-        },
-        {
-          status: "Order Shipped",
-          location: "New Jersey Warehouse",
-          timestamp: "13 Mar 2024, 16:20",
-        },
-        {
-          status: "Order Confirmed",
-          location: "Online",
-          timestamp: "12 Mar 2024, 10:00",
-        },
-      ],
-    },
-  },
-  {
-    id: "ORD123457",
-    date: "10 Mar 2024",
-    status: "Delivered",
-    items: [
-      {
-        id: 3,
-        name: "Summer Dress",
-        brand: "ONLY",
-        size: "S",
-        price: 1299,
-        image:
-          "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=500&auto=format&fit=crop",
-      },
-    ],
-    total: 1398,
-    shippingAddress: "123 Main Street, Apt 4B, New York, NY 10001",
-    paymentMethod: "Credit Card ending in 4242",
-    tracking: {
-      number: "TRK789012346",
-      carrier: "UPS",
-      estimatedDelivery: "10 Mar 2024",
-      currentLocation: "Delivered",
-      status: "Delivered",
-      timeline: [
-        {
-          status: "Delivered",
-          location: "New York, NY",
-          timestamp: "10 Mar 2024, 15:45",
-        },
-        {
-          status: "Order Shipped",
-          location: "New Jersey Warehouse",
-          timestamp: "08 Mar 2024, 11:30",
-        },
-        {
-          status: "Order Confirmed",
-          location: "Online",
-          timestamp: "07 Mar 2024, 09:15",
-        },
-      ],
-    },
-  },
-];
 
 export default function Orders() {
   const router = useRouter();
@@ -156,7 +48,7 @@ export default function Orders() {
       }
     };
     fetchorder();
-  }, []);
+  }, [user]);
    if (isLoading) {
       return (
         <View style={styles.loaderContainer}>
@@ -198,19 +90,24 @@ export default function Orders() {
             </TouchableOpacity>
 
             <View style={styles.itemsContainer}>
-              {order.items.map((item:any) => (
-                <View key={item._id} style={styles.orderItem}>
-                  <Image
-                    source={{ uri: item.productId.images }}
-                    style={styles.itemImage}
-                  />
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.brandName}>{item.productId.brand}</Text>
-                    <Text style={styles.itemName}>{item.productId.name}</Text>
-                    <Text style={styles.itemPrice}>₹{item.productId.price}</Text>
+              {order.items.map((item:any) => {
+                if (!item.productId || typeof item.productId !== "object") return null;
+                return (
+                  <View key={item._id} style={styles.orderItem}>
+                    <Image
+                      source={{
+                        uri: resolveImageUri(item.productId.images?.[0])
+                      }}
+                      style={styles.itemImage}
+                    />
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.brandName}>{item.productId.brand}</Text>
+                      <Text style={styles.itemName}>{item.productId.name}</Text>
+                      <Text style={styles.itemPrice}>₹{item.productId.price}</Text>
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
 
             {expandedOrder === order._id && (

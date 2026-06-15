@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, FlatList } from "react
 import { useRouter } from "expo-router";
 import { getRecentlyViewed, syncRecentlyViewed, ViewedProduct } from "../utils/recentlyViewed";
 import { useAuth } from "../context/AuthContext";
+import { resolveImageUri } from "../utils/image";
 
 const RecentlyViewedSection: React.FC = () => {
   const router = useRouter();
@@ -28,7 +29,12 @@ const RecentlyViewedSection: React.FC = () => {
       style={styles.card}
       onPress={() => router.push(`/product/${item.productId}`)}
     >
-      <Image source={{ uri: item.image }} style={styles.image} />
+      <Image
+        source={{
+          uri: resolveImageUri(item.image)
+        }}
+        style={styles.image}
+      />
       <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
       <Text style={styles.price}>₹{item.price}</Text>
     </TouchableOpacity>

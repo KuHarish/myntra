@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {

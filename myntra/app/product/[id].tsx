@@ -18,6 +18,7 @@ import axios from "axios";
 import { API_BASE_URL } from "@/constants/Api";
 import { useResponsive } from "@/src/hooks/useResponsive";
 import ResponsiveContainer from "@/src/components/responsive/ResponsiveContainer";
+import { resolveImageUri } from "@/utils/image";
 
 export default function ProductDetails() {
   const { id } = useLocalSearchParams();
@@ -122,9 +123,13 @@ export default function ProductDetails() {
     if (autoScrollTimer.current) {
       clearInterval(autoScrollTimer.current);
     }
+    const productImages = (Array.isArray(product?.images) && product.images.length > 0)
+      ? product.images
+      : ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&auto=format&fit=crop"];
+    
     autoScrollTimer.current = setInterval(() => {
       if (product && scrollViewRef.current) {
-        const nextIndex = (currentImageIndex + 1) % product.images.length;
+        const nextIndex = (currentImageIndex + 1) % productImages.length;
         const scrollWidth = isTablet ? Math.min(width, 1280) * 0.45 : width; // matches layout image column width
         scrollViewRef.current.scrollTo({
           x: nextIndex * scrollWidth,
@@ -225,17 +230,17 @@ export default function ProductDetails() {
               onScroll={handleScroll}
               scrollEventThrottle={16}
             >
-              {product.images.map((image: any, index: any) => (
+              {((Array.isArray(product?.images) && product.images.length > 0) ? product.images : ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&auto=format&fit=crop"]).map((image: any, index: any) => (
                 <Image
                   key={index}
-                  source={{ uri: image }}
+                  source={{ uri: resolveImageUri(image) }}
                   style={[styles.productImage, { width: imageColWidth, height: isTablet ? 500 : 400 }]}
                   resizeMode="cover"
                 />
               ))}
             </ScrollView>
             <View style={styles.pagination}>
-              {product.images.map((_: any, index: any) => (
+              {((Array.isArray(product?.images) && product.images.length > 0) ? product.images : ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&auto=format&fit=crop"]).map((_: any, index: any) => (
                 <View
                   key={index}
                   style={[
@@ -340,7 +345,13 @@ export default function ProductDetails() {
                     style={styles.recCard}
                     onPress={() => handleRecommendationPress(item)}
                   >
-                    <Image source={{ uri: item.images?.[0] }} style={styles.recImage} resizeMode="cover" />
+                    <Image
+                      source={{
+                        uri: resolveImageUri(item.images?.[0])
+                      }}
+                      style={styles.recImage}
+                      resizeMode="cover"
+                    />
                     <View style={styles.recInfo}>
                       <Text style={[styles.recBrand, { fontSize: scaleFont(10) }]} numberOfLines={1}>
                         {item.brand}

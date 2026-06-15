@@ -34,7 +34,7 @@ app.use("/product", productrouter);
 app.use("/bag", Bagroutes);
 app.use("/cart", require("./routes/CartRoutes"));
 app.use("/wishlist", Wishlistroutes);
-app.use("/Order", OrderRoutes);
+app.use("/order", OrderRoutes);
 app.use("/recently-viewed", recentlyViewedRouter);
 app.use("/notifications", notificationRouter);
 app.use("/transactions", transactionRouter);

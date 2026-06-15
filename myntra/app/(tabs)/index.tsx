@@ -21,6 +21,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useResponsive } from "@/src/hooks/useResponsive";
 import ResponsiveContainer from "@/src/components/responsive/ResponsiveContainer";
 import ResponsiveGrid from "@/src/components/responsive/ResponsiveGrid";
+import { resolveImageUri } from "@/utils/image";
 
 const deals = [
   {
@@ -134,7 +135,7 @@ export default function Home() {
             <ThemedText type="subtitle" style={[styles.sectionTitle, { fontSize: scaleFont(16) }]}>
               SHOP BY CATEGORY
             </ThemedText>
-            <TouchableOpacity style={styles.viewAll}>
+            <TouchableOpacity style={styles.viewAll} onPress={() => router.push("/categories")}>
               <ThemedText style={{ color: theme.colors.primary, marginRight: 5, fontSize: scaleFont(14) }} type="defaultSemiBold">
                 View All
               </ThemedText>
@@ -153,7 +154,11 @@ export default function Home() {
               <ThemedText colorType="textMuted" style={styles.emptyText}>No categories available</ThemedText>
             ) : (
               categories.map((category: any) => (
-                <TouchableOpacity key={category._id} style={styles.categoryCard}>
+                <TouchableOpacity
+                  key={category._id}
+                  style={styles.categoryCard}
+                  onPress={() => router.push({ pathname: "/categories", params: { categoryId: category._id } })}
+                >
                   <Image source={{ uri: category.image }} style={styles.categoryImage} />
                   <ThemedText style={[styles.categoryName, { fontSize: scaleFont(13) }]} type="defaultSemiBold">
                     {category.name}
@@ -212,7 +217,13 @@ export default function Home() {
                   style={[styles.productCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.text }]}
                   onPress={() => handleProductPress(p._id)}
                 >
-                  <Image source={{ uri: p.images[0] }} style={styles.productImage} resizeMode="cover" />
+                  <Image
+                    source={{
+                      uri: resolveImageUri(p.images?.[0])
+                    }}
+                    style={styles.productImage}
+                    resizeMode="cover"
+                  />
                   <ThemedView style={styles.productInfo} colorType="card">
                     <ThemedText type="default" colorType="textMuted" style={[styles.brandName, { fontSize: scaleFont(11) }]}>
                       {p.brand}
