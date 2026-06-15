@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, MapPin, Plus, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Plus, Trash2, X } from 'lucide-react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedButton } from '@/components/ThemedButton';
@@ -32,8 +32,50 @@ export default function AddressesScreen() {
     },
   ]);
 
+  // Modal and Form States
+  const [modalVisible, setModalVisible] = useState(false);
+  const [tag, setTag] = useState<'Home' | 'Office' | 'Other'>('Home');
+  const [name, setName] = useState('');
+  const [addressLine, setAddressLine] = useState('');
+  const [cityState, setCityState] = useState('');
+  const [phone, setPhone] = useState('');
+
   const handleDelete = (id: string) => {
     setAddresses(addresses.filter(addr => addr.id !== id));
+  };
+
+  const handleSaveAddress = () => {
+    if (!name.trim() || !addressLine.trim() || !cityState.trim() || !phone.trim()) {
+      Alert.alert('Validation Error', 'All fields are required.');
+      return;
+    }
+    
+    // Basic phone number validation
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    if (cleanPhone.length < 10) {
+      Alert.alert('Validation Error', 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    const newAddress = {
+      id: Date.now().toString(),
+      tag,
+      name: name.trim(),
+      addressLine: addressLine.trim(),
+      cityState: cityState.trim(),
+      phone: cleanPhone,
+      isDefault: addresses.length === 0,
+    };
+
+    setAddresses([...addresses, newAddress]);
+
+    // Reset Form
+    setName('');
+    setAddressLine('');
+    setCityState('');
+    setPhone('');
+    setTag('Home');
+    setModalVisible(false);
   };
 
   return (
@@ -88,10 +130,96 @@ export default function AddressesScreen() {
 
         <ThemedButton
           title="Add New Address"
-          onPress={() => alert('Add Address flow is coming soon!')}
+          onPress={() => setModalVisible(true)}
           style={styles.addButton}
         />
       </ScrollView>
+
+      {/* Add New Address Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <ThemedView style={styles.modalOverlay} colorType="background">
+          <ThemedView style={[styles.modalContent, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]} colorType="card">
+            <ThemedView style={styles.modalHeader} colorType="card">
+              <ThemedText type="subtitle">Add New Address</ThemedText>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                <X size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </ThemedView>
+
+            <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
+              <ThemedText type="defaultSemiBold" style={styles.inputLabel}>Address Type</ThemedText>
+              <ThemedView style={styles.chipContainer} colorType="card">
+                {(['Home', 'Office', 'Other'] as const).map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.chip,
+                      tag === type && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }
+                    ]}
+                    onPress={() => setTag(type)}
+                  >
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={[styles.chipText, tag === type && { color: '#ffffff' }]}
+                    >
+                      {type}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </ThemedView>
+
+              <ThemedText type="defaultSemiBold" style={styles.inputLabel}>Full Name</ThemedText>
+              <TextInput
+                style={[styles.textInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                placeholder="Enter recipient's name"
+                placeholderTextColor={theme.colors.textMuted}
+                value={name}
+                onChangeText={setName}
+              />
+
+              <ThemedText type="defaultSemiBold" style={styles.inputLabel}>Address Line</ThemedText>
+              <TextInput
+                style={[styles.textInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                placeholder="Flat / House no., Street, Sector"
+                placeholderTextColor={theme.colors.textMuted}
+                value={addressLine}
+                onChangeText={setAddressLine}
+              />
+
+              <ThemedText type="defaultSemiBold" style={styles.inputLabel}>City, State & PIN Code</ThemedText>
+              <TextInput
+                style={[styles.textInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                placeholder="e.g. Bangalore, Karnataka - 560001"
+                placeholderTextColor={theme.colors.textMuted}
+                value={cityState}
+                onChangeText={setCityState}
+              />
+
+              <ThemedText type="defaultSemiBold" style={styles.inputLabel}>Mobile Number</ThemedText>
+              <TextInput
+                style={[styles.textInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                placeholder="10-digit mobile number"
+                placeholderTextColor={theme.colors.textMuted}
+                keyboardType="phone-pad"
+                maxLength={10}
+                value={phone}
+                onChangeText={setPhone}
+              />
+
+              <ThemedButton
+                title="Save Address"
+                onPress={handleSaveAddress}
+                style={styles.saveButton}
+              />
+            </ScrollView>
+          </ThemedView>
+        </ThemedView>
+      </Modal>
     </ThemedView>
   );
 }
@@ -168,5 +296,65 @@ const styles = StyleSheet.create({
   },
   addButton: {
     marginTop: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: '85%',
+    borderWidth: 1,
+    borderBottomWidth: 0,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  formContainer: {
+    paddingBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 13,
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 8,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipText: {
+    fontSize: 13,
+  },
+  textInput: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  saveButton: {
+    marginTop: 24,
   },
 });

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, CreditCard, Plus, Shield } from 'lucide-react-native';
+import { ArrowLeft, CreditCard, Plus, Shield, X } from 'lucide-react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedButton } from '@/components/ThemedButton';
@@ -27,6 +27,91 @@ export default function PaymentsScreen() {
       holder: 'KARAN KUMAR',
     },
   ]);
+
+  // Modal and Form States
+  const [modalVisible, setModalVisible] = useState(false);
+  const [bank, setBank] = useState('');
+  const [cardType, setCardType] = useState<'Credit Card' | 'Debit Card'>('Credit Card');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [holder, setHolder] = useState('');
+
+  const handleCardNumberChange = (text: string) => {
+    // remove all non-digits
+    const clean = text.replace(/[^0-9]/g, '');
+    // format with space every 4 digits
+    let formatted = '';
+    for (let i = 0; i < clean.length; i++) {
+      if (i > 0 && i % 4 === 0) {
+        formatted += ' ';
+      }
+      formatted += clean[i];
+    }
+    setCardNumber(formatted);
+  };
+
+  const handleExpiryChange = (text: string) => {
+    // remove all non-digits
+    const clean = text.replace(/[^0-9]/g, '');
+    if (clean.length > 2) {
+      setExpiry(`${clean.slice(0, 2)}/${clean.slice(2, 4)}`);
+    } else {
+      setExpiry(clean);
+    }
+  };
+
+  const handleSaveCard = () => {
+    if (!bank.trim() || !cardNumber.trim() || !expiry.trim() || !cvv.trim() || !holder.trim()) {
+      Alert.alert('Validation Error', 'All fields are required.');
+      return;
+    }
+
+    const cleanCardNum = cardNumber.replace(/\s/g, '');
+    if (cleanCardNum.length !== 16) {
+      Alert.alert('Validation Error', 'Please enter a valid 16-digit card number.');
+      return;
+    }
+
+    const expiryMatch = expiry.match(/^(\d{2})\/(\d{2})$/);
+    if (!expiryMatch) {
+      Alert.alert('Validation Error', 'Please enter a valid expiry date in MM/YY format.');
+      return;
+    }
+
+    const month = parseInt(expiryMatch[1], 10);
+    if (month < 1 || month > 12) {
+      Alert.alert('Validation Error', 'Expiry month must be between 01 and 12.');
+      return;
+    }
+
+    if (cvv.trim().length !== 3) {
+      Alert.alert('Validation Error', 'Please enter a valid 3-digit CVV.');
+      return;
+    }
+
+    const lastFour = cleanCardNum.slice(-4);
+    const maskedNumber = `•••• •••• •••• ${lastFour}`;
+
+    const newCard = {
+      id: Date.now().toString(),
+      bank: `${bank.trim()} ${cardType}`,
+      number: maskedNumber,
+      expiry: expiry.trim(),
+      holder: holder.trim().toUpperCase(),
+    };
+
+    setCards([...cards, newCard]);
+
+    // Reset Form
+    setBank('');
+    setCardType('Credit Card');
+    setCardNumber('');
+    setExpiry('');
+    setCvv('');
+    setHolder('');
+    setModalVisible(false);
+  };
 
   return (
     <ThemedView style={styles.container} colorType="background">
@@ -77,10 +162,116 @@ export default function PaymentsScreen() {
 
         <ThemedButton
           title="Add New Card"
-          onPress={() => alert('Add Payment Card flow is coming soon!')}
+          onPress={() => setModalVisible(true)}
           style={styles.addButton}
         />
       </ScrollView>
+
+      {/* Add New Card Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <ThemedView style={styles.modalOverlay} colorType="background">
+          <ThemedView style={[styles.modalContent, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]} colorType="card">
+            <ThemedView style={styles.modalHeader} colorType="card">
+              <ThemedText type="subtitle">Add New Card</ThemedText>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                <X size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </ThemedView>
+
+            <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
+              <ThemedText type="defaultSemiBold" style={styles.inputLabel}>Bank Name</ThemedText>
+              <TextInput
+                style={[styles.textInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                placeholder="e.g. HDFC Bank, ICICI Bank"
+                placeholderTextColor={theme.colors.textMuted}
+                value={bank}
+                onChangeText={setBank}
+              />
+
+              <ThemedText type="defaultSemiBold" style={styles.inputLabel}>Card Type</ThemedText>
+              <ThemedView style={styles.chipContainer} colorType="card">
+                {(['Credit Card', 'Debit Card'] as const).map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.chip,
+                      cardType === type && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }
+                    ]}
+                    onPress={() => setCardType(type)}
+                  >
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={[styles.chipText, cardType === type && { color: '#ffffff' }]}
+                    >
+                      {type}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </ThemedView>
+
+              <ThemedText type="defaultSemiBold" style={styles.inputLabel}>Card Number</ThemedText>
+              <TextInput
+                style={[styles.textInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                placeholder="0000 0000 0000 0000"
+                placeholderTextColor={theme.colors.textMuted}
+                keyboardType="numeric"
+                maxLength={19}
+                value={cardNumber}
+                onChangeText={handleCardNumberChange}
+              />
+
+              <ThemedView style={styles.row} colorType="card">
+                <ThemedView style={styles.halfInputContainer} colorType="card">
+                  <ThemedText type="defaultSemiBold" style={styles.inputLabel}>Expiry Date</ThemedText>
+                  <TextInput
+                    style={[styles.textInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                    placeholder="MM/YY"
+                    placeholderTextColor={theme.colors.textMuted}
+                    keyboardType="numeric"
+                    maxLength={5}
+                    value={expiry}
+                    onChangeText={handleExpiryChange}
+                  />
+                </ThemedView>
+
+                <ThemedView style={styles.halfInputContainer} colorType="card">
+                  <ThemedText type="defaultSemiBold" style={styles.inputLabel}>CVV</ThemedText>
+                  <TextInput
+                    style={[styles.textInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                    placeholder="123"
+                    placeholderTextColor={theme.colors.textMuted}
+                    keyboardType="numeric"
+                    secureTextEntry={true}
+                    maxLength={3}
+                    value={cvv}
+                    onChangeText={setCvv}
+                  />
+                </ThemedView>
+              </ThemedView>
+
+              <ThemedText type="defaultSemiBold" style={styles.inputLabel}>Cardholder Name</ThemedText>
+              <TextInput
+                style={[styles.textInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                placeholder="Name as printed on card"
+                placeholderTextColor={theme.colors.textMuted}
+                value={holder}
+                onChangeText={setHolder}
+              />
+
+              <ThemedButton
+                title="Save Card"
+                onPress={handleSaveCard}
+                style={styles.saveButton}
+              />
+            </ScrollView>
+          </ThemedView>
+        </ThemedView>
+      </Modal>
     </ThemedView>
   );
 }
@@ -161,5 +352,73 @@ const styles = StyleSheet.create({
   },
   addButton: {
     marginTop: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: '85%',
+    borderWidth: 1,
+    borderBottomWidth: 0,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  formContainer: {
+    paddingBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 13,
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 8,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipText: {
+    fontSize: 13,
+  },
+  textInput: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  halfInputContainer: {
+    flex: 1,
+  },
+  saveButton: {
+    marginTop: 24,
   },
 });
