@@ -65,7 +65,7 @@ export default function Signup() {
   };
 
   /* ─────────────────────────────── Form ─────────────────────────────── */
-  const FormContent = () => (
+  const renderFormContent = () => (
     <>
       <View style={styles.logoRow}>
         <ShoppingBag size={28} color="#ff3f6c" />
@@ -186,7 +186,7 @@ export default function Signup() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <FormContent />
+          {renderFormContent()}
         </ScrollView>
       </View>
     );
@@ -219,7 +219,7 @@ export default function Signup() {
         </View>
 
         <View style={styles.mobileCard}>
-          <FormContent />
+          {renderFormContent()}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

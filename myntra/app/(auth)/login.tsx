@@ -59,7 +59,7 @@ export default function Login() {
   };
 
   /* ─────────────────────────────── Form ─────────────────────────────── */
-  const FormPanel = () => (
+  const renderFormPanel = () => (
     <View style={[styles.formPanel, isDesktop && styles.formPanelDesktop]}>
       {/* Logo */}
       <View style={styles.logoRow}>
@@ -160,6 +160,7 @@ export default function Login() {
               ))}
             </View>
           </View>
+
         </View>
 
         {/* Right form */}
@@ -169,7 +170,7 @@ export default function Login() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <FormPanel />
+          {renderFormPanel()}
         </ScrollView>
       </View>
     );
