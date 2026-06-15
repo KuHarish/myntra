@@ -105,12 +105,26 @@ export async function syncRecentlyViewed(userId: string): Promise<void> {
     const mappedServer = serverItems.map(mapServerItemToLocal);
     const local = await getRecentlyViewed();
 
-    // Merge: map by productId, keep the newer viewedAt
+    // Create a map of server details to override local stale details (like broken/old images)
+    const serverMap = new Map<string, ViewedProduct>();
+    mappedServer.forEach(s => serverMap.set(s.productId, s));
+
+    // Merge: map by productId, keep the newer viewedAt, but use fresh server details
     const map = new Map<string, ViewedProduct>();
     [...mappedServer, ...local].forEach(item => {
       const existing = map.get(item.productId);
-      if (!existing || new Date(item.viewedAt) > new Date(existing.viewedAt)) {
-        map.set(item.productId, item);
+      const serverDetails = serverMap.get(item.productId);
+      
+      const mergedItem = {
+        ...item,
+        // Always override visual details with server data if available
+        name: serverDetails ? serverDetails.name : item.name,
+        price: serverDetails ? serverDetails.price : item.price,
+        image: serverDetails ? serverDetails.image : item.image,
+      };
+
+      if (!existing || new Date(mergedItem.viewedAt) > new Date(existing.viewedAt)) {
+        map.set(item.productId, mergedItem);
       }
     });
 
