@@ -73,6 +73,25 @@ async function migrateProductCategories() {
       }
     }
     console.log(`[Migration] Updated categories field for ${updatedCount} products.`);
+
+    // Direction B: Product.categories -> Category.productId (for seeded / legacy products)
+    const products = await Product.find();
+    let updatedCategoriesCount = 0;
+    for (const prod of products) {
+      if (Array.isArray(prod.categories)) {
+        for (const catId of prod.categories) {
+          if (!catId) continue;
+          const res = await Category.updateOne(
+            { _id: catId },
+            { $addToSet: { productId: prod._id } }
+          );
+          if (res.modifiedCount > 0) {
+            updatedCategoriesCount++;
+          }
+        }
+      }
+    }
+    console.log(`[Migration] Added products to categories' productId array for ${updatedCategoriesCount} associations.`);
   } catch (err) {
     console.error(`[Migration] Error migrating product categories:`, err);
   }
@@ -83,7 +102,7 @@ async function runMigrations() {
   await migrateRecentlyViewedToBrowsingHistory();
   await migrateProductCategories();
   
-  // Set default stock and isDiscontinued for legacy products if missing
+  // Set default stock, isDiscontinued, and status for legacy products if missing
   try {
     const stockUpdateRes = await Product.updateMany(
       { stock: { $exists: false } },
@@ -99,6 +118,14 @@ async function runMigrations() {
     );
     if (discUpdateRes.modifiedCount > 0) {
       console.log(`[Migration] Set default isDiscontinued of false for ${discUpdateRes.modifiedCount} legacy products.`);
+    }
+
+    const statusUpdateRes = await Product.updateMany(
+      { status: { $exists: false } },
+      { $set: { status: "active" } }
+    );
+    if (statusUpdateRes.modifiedCount > 0) {
+      console.log(`[Migration] Set default status of 'active' for ${statusUpdateRes.modifiedCount} legacy products.`);
     }
   } catch (err) {
     console.error("[Migration] Error updating legacy product defaults:", err);
