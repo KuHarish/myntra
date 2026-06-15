@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   ChevronRight,
+  ShieldAlert,
 } from "lucide-react-native";
 import { useAuth } from "@/context/AuthContext";
 import { ThemedView } from "@/components/ThemedView";
@@ -29,6 +30,10 @@ export default function Profile() {
     { icon: MapPin, label: "Addresses", route: "/addresses" },
     { icon: Settings, label: "Settings", route: "/settings" },
   ];
+
+  if (user && user.role === "admin") {
+    menuItems.unshift({ icon: ShieldAlert, label: "Admin Dashboard", route: "/admin/dashboard" as any });
+  }
 
   const handleLogout = () => {
     logout();

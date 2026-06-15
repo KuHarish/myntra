@@ -4,7 +4,10 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    const categories = await Category.find().populate("productId");
+    const categories = await Category.find().populate({
+      path: "productId",
+      match: { status: "active" }
+    });
     res.status(200).json(categories);
   } catch (error) {
     console.log(error);

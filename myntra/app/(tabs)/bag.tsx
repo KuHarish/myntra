@@ -409,11 +409,13 @@ export default function Bag() {
               ]}
               colorType="card"
             >
-              <Image
-                source={{ uri: imageUri }}
-                style={styles.itemImage}
-                resizeMode="cover"
-              />
+              <View style={styles.imageWrapper}>
+                <Image
+                  source={{ uri: imageUri }}
+                  style={styles.itemImage}
+                  resizeMode="cover"
+                />
+              </View>
 
               <ThemedView style={styles.itemInfo} colorType="card">
                 <ThemedText type="default" colorType="textMuted" style={[styles.brandName, { fontSize: scaleFont(11) }]}>

@@ -66,8 +66,8 @@ exports.addToCart = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: "Product not found." });
     }
-    if (product.isDiscontinued) {
-      return res.status(400).json({ message: "Cannot add discontinued product to cart." });
+    if (product.status !== "active") {
+      return res.status(400).json({ message: "Cannot add inactive or discontinued product to cart." });
     }
 
     const cart = await getOrCreateCart(userId);
@@ -118,8 +118,8 @@ exports.updateQuantity = async (req, res) => {
     }
 
     const product = await Product.findById(cartItem.productId);
-    if (!product || product.isDiscontinued) {
-      return res.status(400).json({ message: "Product is discontinued or unavailable." });
+    if (!product || product.status !== "active") {
+      return res.status(400).json({ message: "Product is inactive, discontinued or unavailable." });
     }
 
     // Strengthen Stock Validation
@@ -261,7 +261,7 @@ exports.moveToCart = async (req, res) => {
       }).save({ session });
       throw new Error("Product not found.");
     }
-    if (product.isDiscontinued) {
+    if (product.status !== "active") {
       // Restore before failing
       await new SavedItem({
         _id: savedItem._id,
@@ -270,7 +270,7 @@ exports.moveToCart = async (req, res) => {
         size: savedItem.size,
         quantity: savedItem.quantity
       }).save({ session });
-      throw new Error("Cannot move discontinued product to active bag.");
+      throw new Error("Cannot move inactive or discontinued product to active bag.");
     }
 
     // Check stock limit
@@ -324,10 +324,10 @@ exports.moveToCart = async (req, res) => {
         }
 
         const product = await Product.findById(savedItem.productId);
-        if (!product || product.isDiscontinued) {
+        if (!product || product.status !== "active") {
           // Restore
           await new SavedItem(savedItem.toObject()).save();
-          return res.status(400).json({ message: "Product is discontinued or unavailable." });
+          return res.status(400).json({ message: "Product is inactive, discontinued or unavailable." });
         }
 
         // Check stock limit
@@ -398,7 +398,7 @@ exports.validateCart = async (req, res) => {
         status: "valid", // "valid", "price_changed", "out_of_stock", "discontinued"
       };
 
-      if (!product || product.isDiscontinued) {
+      if (!product || product.status !== "active") {
         detail.status = "discontinued";
         isValid = false;
       } else if (item.quantity > product.stock) {

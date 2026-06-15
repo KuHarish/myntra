@@ -11,6 +11,7 @@ const recentlyViewedRouter = require('./routes/recentlyViewed');
 const notificationRouter = require('./routes/notifications');
 const transactionRouter = require("./routes/TransactionRoutes");
 const recommendationRouter = require("./routes/recommendationRoutes");
+const adminrouter = require("./routes/Adminroutes");
 const { startWorker } = require("./services/notificationQueue");
 const { runMigrations } = require("./services/migrationService");
 const cors = require('cors');
@@ -32,6 +33,7 @@ app.get("/", (req, res) => {
 app.use("/user", userrouter);
 app.use("/category", categoryrouter);
 app.use("/product", productrouter);
+app.use("/admin/products", adminrouter);
 app.use("/bag", Bagroutes);
 app.use("/cart", require("./routes/CartRoutes"));
 app.use("/wishlist", Wishlistroutes);

@@ -3,9 +3,19 @@ import { getUserData, saveUserData, clearUserData } from "@/utils/storage";
 import React from "react";
 import axios from "axios";
 import { API_BASE_URL } from "@/constants/Api";
+
+type UserType = {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  token: string;
+};
+
 type AuthContextType = {
   isAuthenticated: boolean;
-  user: { _id: string; name: string; email: string } | null;
+  user: UserType | null;
+  isLoading: boolean;
   Signup: (fullName: string, email: string, password: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -15,24 +25,32 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<{
-    _id: string;
-    name: string;
-    email: string;
-  } | null>(null);
+  const [user, setUser] = useState<UserType | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const data = await getUserData();
-      if (data._id && data.name && data.email) {
-        setUser({ _id: data._id, name: data.name, email: data.email });
-        setIsAuthenticated(true);
+      try {
+        const data = await getUserData();
+        if (data._id && data.name && data.email) {
+          setUser({
+            _id: data._id,
+            name: data.name,
+            email: data.email,
+            role: data.role || "user",
+            token: data.token || "",
+          });
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error("Error rehydrating user session:", error);
+      } finally {
+        setIsLoading(false);
       }
     })();
   }, []);
 
   const login = async (email: string, password: string) => {
-    // 👉 Replace with your real API URL
     const res = await axios.post(`${API_BASE_URL}/user/login`, {
       email,
       password,
@@ -40,15 +58,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const data = await res.data.user;
     if (data.fullName) {
-      await saveUserData(data._id, data.fullName, data.email);
-      setUser({ _id: data._id, name: data.fullName, email: data.email });
+      const role = data.role || "user";
+      const token = data.token || "";
+      await saveUserData(data._id, data.fullName, data.email, role, token);
+      setUser({
+        _id: data._id,
+        name: data.fullName,
+        email: data.email,
+        role: role,
+        token: token,
+      });
       setIsAuthenticated(true);
     } else {
       throw new Error(data.message || "Login failed");
     }
   };
+
   const Signup = async (fullName: string, email: string, password: string) => {
-    // 👉 Replace with your real API URL
     const res = await axios.post(`${API_BASE_URL}/user/signup`, {
       fullName,
       email,
@@ -56,13 +82,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
     const data = await res.data.user;
     if (data.fullName) {
-      await saveUserData(data._id, data.fullName, data.email);
-      setUser({ _id: data._id, name: data.fullName, email: data.email });
+      const role = data.role || "user";
+      const token = data.token || "";
+      await saveUserData(data._id, data.fullName, data.email, role, token);
+      setUser({
+        _id: data._id,
+        name: data.fullName,
+        email: data.email,
+        role: role,
+        token: token,
+      });
       setIsAuthenticated(true);
     } else {
       throw new Error(data.message || "Login failed");
     }
   };
+
   const logout = async () => {
     await clearUserData();
     setUser(null);
@@ -71,7 +106,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, user, Signup, login, logout }}
+      value={{ isAuthenticated, user, isLoading, Signup, login, logout }}
     >
       {children}
     </AuthContext.Provider>

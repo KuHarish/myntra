@@ -73,8 +73,8 @@ router.post("/create/:userId", async (req, res) => {
     // 3. Validate and Deduct Stock Inside Transaction
     for (const item of items) {
       const product = await Product.findById(item.productId).session(session);
-      if (!product || product.isDiscontinued) {
-        throw new Error(`Product discontinued: ${item.productNameAtAdded}`);
+      if (!product || product.status !== "active") {
+        throw new Error(`Product discontinued or inactive: ${item.productNameAtAdded}`);
       }
       if (product.price !== item.priceAtAdded) {
         throw new Error(`Price changed for ${item.productNameAtAdded}. Current: ₹${product.price}, Cart: ₹${item.priceAtAdded}`);
@@ -192,8 +192,8 @@ router.post("/create/:userId", async (req, res) => {
         // Step 1: Pre-validate all items to prevent half-updates
         for (const item of items) {
           const product = await Product.findById(item.productId);
-          if (!product || product.isDiscontinued) {
-            return res.status(409).json({ message: `Product is discontinued: ${item.productNameAtAdded}`, code: "DISCONTINUED" });
+          if (!product || product.status !== "active") {
+            return res.status(409).json({ message: `Product is discontinued or inactive: ${item.productNameAtAdded}`, code: "DISCONTINUED" });
           }
           if (product.price !== item.priceAtAdded) {
             return res.status(409).json({ message: `Price changed for ${item.productNameAtAdded}. Current: ₹${product.price}, Cart: ₹${item.priceAtAdded}`, code: "PRICE_CHANGED" });

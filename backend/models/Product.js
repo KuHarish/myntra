@@ -10,6 +10,19 @@ const ProductSchema = new mongoose.Schema(
     images: [String],
     stock: { type: Number, default: 50, index: true },
     isDiscontinued: { type: Boolean, default: false, index: true },
+    status: {
+      type: String,
+      enum: ["active", "inactive", "discontinued"],
+      default: "active",
+      index: true,
+    },
+    priceHistory: [
+      {
+        oldPrice: Number,
+        newPrice: Number,
+        changedAt: { type: Date, default: Date.now },
+      }
+    ],
     version: { type: Number, default: 1 },
     categories: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category" }]
   },
