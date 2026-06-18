@@ -22,7 +22,7 @@ const RecentlyViewedSection: React.FC = () => {
           if (img.includes("photo-1583391733956-6c78276477e1")) {
             img = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&auto=format&fit=crop";
           } else if (img.includes("photo-1618244972963-dbad0c4abf18")) {
-            img = "http://localhost:5000/uploads/ribbed_knit_co_ord.png";
+            img = `${API_BASE_URL}/uploads/ribbed_knit_co_ord.png`;
           } else if (img.includes("photo-1594938298603-c8148c4b4c0a")) {
             img = "https://images.unsplash.com/photo-1479064555552-3ef4979f8908?w=500&auto=format&fit=crop";
           } else if (img.includes("photo-1586495777744-4e6232bf2f31")) {
@@ -46,7 +46,7 @@ const RecentlyViewedSection: React.FC = () => {
             if (img.includes("photo-1583391733956-6c78276477e1")) {
               img = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&auto=format&fit=crop";
             } else if (img.includes("photo-1618244972963-dbad0c4abf18")) {
-              img = "http://localhost:5000/uploads/ribbed_knit_co_ord.png";
+              img = `${API_BASE_URL}/uploads/ribbed_knit_co_ord.png`;
             } else if (img.includes("photo-1594938298603-c8148c4b4c0a")) {
               img = "https://images.unsplash.com/photo-1479064555552-3ef4979f8908?w=500&auto=format&fit=crop";
             } else if (img.includes("photo-1586495777744-4e6232bf2f31")) {
